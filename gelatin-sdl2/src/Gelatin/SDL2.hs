@@ -107,8 +107,8 @@ startupSDL2Backends ww wh ws highDPI = do
     let openGL = defaultOpenGL{ glProfile = Core Debug 3 3
                               }
         window = defaultWindow{ windowInitialSize = V2 (fromIntegral ww)
-                                                       (fromIntegral wh)
-                              , windowOpenGL = Just openGL
+                                                       (fromIntegral wh),
+                                SDL.windowGraphicsContext = SDL.OpenGLContext SDL.defaultOpenGL
                               , windowResizable = True
                               , windowHighDPI = highDPI
                               }

@@ -46,12 +46,12 @@ glyphFormatString fmt
     | fmt == ft_GLYPH_FORMAT_BITMAP = "ft_GLYPH_FORMAT_BITMAP"
     | otherwise = "ft_GLYPH_FORMAT_NONE"
 
-liftE :: MonadIO m => IO (Either FT_Error a) -> FreeTypeT m a
+liftE :: (MonadIO m, MonadFail m) => IO (Either FT_Error a) -> FreeTypeT m a
 liftE f = (liftIO f) >>= \case
   Left e  -> fail $ "FreeType2 error:" ++ (show e)
   Right a -> return a
 
-runIOErr :: MonadIO m => IO FT_Error -> FreeTypeT m ()
+runIOErr :: (MonadIO m, MonadFail m) => IO FT_Error -> FreeTypeT m ()
 runIOErr f = do
   e <- liftIO f
   unless (e == 0) $ fail $ "FreeType2 error:" ++ (show e)
@@ -79,7 +79,7 @@ withFreeType (Just lib) f = evalStateT (runExceptT f) lib
 getLibrary :: MonadIO m => FreeTypeT m FT_Library
 getLibrary = lift get
 
-newFace :: MonadIO m => FilePath -> FreeTypeT m FT_Face
+newFace :: (MonadIO m, MonadFail m) => FilePath -> FreeTypeT m FT_Face
 newFace fp = do
   ft <- lift get
   liftE $ withCString fp $ \str ->
@@ -87,29 +87,29 @@ newFace fp = do
       0 -> Right <$> peek ptr
       e -> return $ Left e
 
-setCharSize :: (MonadIO m, Integral i) => FT_Face -> i -> i -> i -> i -> FreeTypeT m ()
+setCharSize :: (MonadIO m, Integral i, MonadFail m) => FT_Face -> i -> i -> i -> i -> FreeTypeT m ()
 setCharSize ff w h dpix dpiy = runIOErr $
   ft_Set_Char_Size ff (fromIntegral w)    (fromIntegral h)
                       (fromIntegral dpix) (fromIntegral dpiy)
 
-setPixelSizes :: (MonadIO m, Integral i) => FT_Face -> i -> i -> FreeTypeT m ()
+setPixelSizes :: (MonadIO m, Integral i, MonadFail m) => FT_Face -> i -> i -> FreeTypeT m ()
 setPixelSizes ff w h =
   runIOErr $ ft_Set_Pixel_Sizes ff (fromIntegral w) (fromIntegral h)
 
-getCharIndex :: (MonadIO m, Integral i)
+getCharIndex :: (MonadIO m, MonadFail m, Integral i)
              => FT_Face -> i -> FreeTypeT m FT_UInt
 getCharIndex ff ndx = liftIO $ ft_Get_Char_Index ff $ fromIntegral ndx
 
-loadGlyph :: MonadIO m => FT_Face -> FT_UInt -> FT_Int32 -> FreeTypeT m ()
+loadGlyph :: (MonadIO m, MonadFail m) => FT_Face -> FT_UInt -> FT_Int32 -> FreeTypeT m ()
 loadGlyph ff fg flags = runIOErr $ ft_Load_Glyph ff fg flags
 
-loadChar :: MonadIO m => FT_Face -> FT_ULong -> FT_Int32 -> FreeTypeT m ()
+loadChar :: (MonadIO m, MonadFail m) => FT_Face -> FT_ULong -> FT_Int32 -> FreeTypeT m ()
 loadChar ff char flags = runIOErr $ ft_Load_Char ff char flags
 
 hasKerning :: MonadIO m => FT_Face -> FreeTypeT m Bool
 hasKerning = liftIO . ft_HAS_KERNING
 
-getKerning :: MonadIO m => FT_Face -> FT_UInt -> FT_UInt -> FT_Kerning_Mode -> FreeTypeT m (Int,Int)
+getKerning :: (MonadIO m, MonadFail m) => FT_Face -> FT_UInt -> FT_UInt -> FT_Kerning_Mode -> FreeTypeT m (Int,Int)
 getKerning ff prevNdx curNdx flags = liftE $ alloca $ \ptr -> do
   ft_Get_Kerning ff prevNdx curNdx (fromIntegral flags) ptr >>= \case
     0 -> do FT_Vector x y <- peek ptr

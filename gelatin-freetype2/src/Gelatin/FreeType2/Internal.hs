@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 -- |
 -- Module:     Gelatin.FreeType2
 -- Copyright:  (c) 2017 Schell Scivally
@@ -32,7 +34,7 @@ type WordMap = Map String (V2 Float, Renderer2)
 
 -- | Load a string of words into the 'Atlas'.
 loadWords
-  :: MonadIO m
+  :: (MonadIO m, MonadFail (VerticesT (V2 Float, V2 Float) IO))
   => Backend GLuint e V2V2 (V2 Float) Float Raster
   -- ^ The V2V2 backend needed to render font glyphs.
   -> Atlas
@@ -243,7 +245,7 @@ freeAtlas a = liftIO $ do
   _ <- unloadMissingWords a ""
   with (atlasTexture a) $ \ptr -> glDeleteTextures 1 ptr
 
-makeCharQuad :: MonadIO m => Atlas -> Bool -> (Int, Maybe FT_UInt) -> Char
+makeCharQuad :: (MonadIO m, MonadFail (VerticesT (V2 Float, V2 Float) m)) => Atlas -> Bool -> (Int, Maybe FT_UInt) -> Char
              -> VerticesT (V2 Float, V2 Float) m (Int, Maybe FT_UInt)
 makeCharQuad Atlas{..} useKerning (penx, mLast) char = do
   let ichar = fromEnum char
@@ -281,7 +283,7 @@ makeCharQuad Atlas{..} useKerning (penx, mLast) char = do
 asciiChars :: String
 asciiChars = map toEnum [32..126]
 
-stringTris :: MonadIO m => Atlas -> Bool -> String -> VerticesT (V2 Float, V2 Float) m ()
+stringTris :: (MonadIO m, MonadFail (VerticesT (V2 Float, V2 Float) m)) => Atlas -> Bool -> String -> VerticesT (V2 Float, V2 Float) m ()
 stringTris atlas useKerning =
   foldM_ (makeCharQuad atlas useKerning) (0, Nothing)
 --------------------------------------------------------------------------------
@@ -299,7 +301,7 @@ stringTris atlas useKerning =
 -- 'freetypeRenderer2' goes further and stores these geometries, looking them up
 -- and constructing a string of word renderers for each input 'String'.
 freetypePicture
-  :: MonadIO m
+  :: (MonadIO m, MonadFail (VerticesT (V2 Float, V2 Float) m))
   => Atlas
   -- ^ The 'Atlas' from which to read font textures word geometry.
   -> String
@@ -325,7 +327,7 @@ freetypePicture atlas@Atlas{..} str = do
 -- clean up operation that does nothing. It is expected that the programmer
 -- will call 'freeAtlas' manually when the 'Atlas' is no longer needed.
 freetypeRenderer2
-  :: MonadIO m
+  :: (MonadIO m, MonadFail (VerticesT (V2 Float, V2 Float) IO))
   => Backend GLuint e V2V2 (V2 Float) Float Raster
   -- ^ The V2V2 backend to use for compilation.
   -> Atlas
@@ -379,3 +381,6 @@ freetypeRenderer2 b atlas0 color str = do
         in measureString n rest
       V2 szw szh = snd $ measureString (0,0) str
   return ((return (), rr), V2 szw (max spaceh szh), atlas)
+
+instance MonadFail (VerticesT (V2 Float, V2 Float) IO) where
+    fail _ = fail "aasda"
