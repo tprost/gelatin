@@ -104,16 +104,18 @@ startupSDL2Backends
   -- the window size.
   -> m SDL2Backends
 startupSDL2Backends ww wh ws highDPI = do
-    let openGL = defaultOpenGL{ glProfile = Core Debug 3 3
-                              }
-        window = defaultWindow{ windowInitialSize = V2 (fromIntegral ww)
-                                                       (fromIntegral wh),
-                                SDL.windowGraphicsContext = SDL.OpenGLContext SDL.defaultOpenGL
-                              , windowResizable = True
-                              , windowHighDPI = highDPI
-                              }
-    startupSDL2BackendsWithConfig window ws
+  let openGLConfig = SDL.OpenGLConfig{ glColorPrecision = V4 8 8 8 0,
+                                       glDepthPrecision = 24,
+                                       glStencilPrecision = 8,
+                                       glMultisampleSamples = 1,
+                                       glProfile = Core Debug 3 3}
 
+  let window = defaultWindow{ windowInitialSize = V2 (fromIntegral ww)
+                                                 (fromIntegral wh),
+                          SDL.windowGraphicsContext = SDL.OpenGLContext openGLConfig
+                        , windowResizable = True
+                        , windowHighDPI = highDPI}
+  startupSDL2BackendsWithConfig window ws
 
 updateWindowSDL2 :: Window -> IO ()
 updateWindowSDL2 = glSwapWindow
